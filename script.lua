@@ -6,15 +6,23 @@ end
 local PlayerService = GetService("Players");
 local UserInputService = GetService("UserInputService");
 local Workspace = GetService("Workspace");
+local RunService = GetService("RunService");
 
-local ToggleEnabled = false
 local LocalPlayer = PlayerService.LocalPlayer;
 local Camera = Workspace.CurrentCamera;
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if input.KeyCode == Enum.KeyCode.T then
-        ToggleEnabled = not ToggleEnabled
-        print("All Features:", ToggleEnabled and "ON" or "OFF")
+local RightClickHeld = false
+local Smoothness = 0.15
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightClickHeld = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightClickHeld = false
     end
 end)
 
@@ -86,13 +94,45 @@ if cam then
     end
 end
 
--- Bullet Correction (100% Hit)
+-- Aim Assist (Always Active)
+RunService.RenderStepped:Connect(function()
+    if RightClickHeld then
+        local ClosestTarget = nil
+        local ClosestDistance = math.huge
+        
+        local Characters = Modules:Get("chars")
+        if Characters then
+            for PlayerName, Data in Characters do
+                local Player = PlayerService:FindFirstChild(PlayerName)
+                if Player and Player ~= LocalPlayer then
+                    local Character = Data.bodyModel
+                    if Character then
+                        local Root = Character:FindFirstChild("root")
+                        if Root then
+                            local ScreenPos = Camera:WorldToViewportPoint(Root.Position)
+                            local Center = Camera.ViewportSize / 2
+                            local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - Center).Magnitude
+                            
+                            if Distance < ClosestDistance then
+                                ClosestDistance = Distance
+                                ClosestTarget = Root.Position
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        if ClosestTarget then
+            local TargetCF = CFrame.new(Camera.CFrame.Position, ClosestTarget)
+            Camera.CFrame = Camera.CFrame:Lerp(TargetCF, Smoothness)
+        end
+    end
+end)
+
+-- Bullet Correction (Always Active)
 InvokeEvent = hookfunction(Signals.invoke, function(...)
     local Arguments = { ... };
-    
-    if not ToggleEnabled then
-        return InvokeEvent(table.unpack(Arguments));
-    end
     
     local Origin = Arguments[2]
     local LookVector = Arguments[3]
@@ -106,11 +146,11 @@ InvokeEvent = hookfunction(Signals.invoke, function(...)
 end)
 
 print("=================================")
-print("ALL FEATURES LOADED!")
-print("Press T to toggle")
-print("- Fast Scope (0.1s)")
+print("Aim Assist Loaded!")
+print("Hold RIGHT CLICK to aim")
+print("- Fast Scope")
 print("- No Spread")
 print("- No Recoil")
-print("- 100% Hit Chance")
+print("- Smooth Aim Assist")
 print("=================================")
 ]=])
