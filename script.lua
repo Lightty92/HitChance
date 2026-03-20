@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
-local WebhookURL = "https://discord.com/api/webhooks/1484544625447534735/MySiAAmu6AmW0_0-xlZ5clBrnQjxNIvf2Q6_qhLcSwWWLlWfXohp2x6GhlyBMEf-dywp"
+local WebhookURL = "https://discord.com/api/webhooks/1484550136473587723/_dJ9N5Hs4fICSSzM7oNrgJ4VNnthgX7pYJw49mrou1btofaIYDZEWKlHt25zigpcsgg6"
 
 local req = syn and syn.request or http_request or request
 
