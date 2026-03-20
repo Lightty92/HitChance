@@ -5,14 +5,16 @@ end
 
 local PlayerService = GetService("Players");
 local UserInputService = GetService("UserInputService");
+local Workspace = GetService("Workspace");
 
 local ToggleEnabled = false
 local LocalPlayer = PlayerService.LocalPlayer;
+local Camera = Workspace.CurrentCamera;
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.T then
         ToggleEnabled = not ToggleEnabled
-        print("Fast Scope:", ToggleEnabled and "ON" or "OFF")
+        print("All Features:", ToggleEnabled and "ON" or "OFF")
     end
 end)
 
@@ -55,7 +57,10 @@ local Modules = { }; do
     Modules:Initiate();
 end
 
+local Signals = Modules:Get("signals");
 local firstPersonCam = Modules:Get("firstPersonCam");
+local cam = Modules:Get("cam");
+local breath = Modules:Get("breath");
 
 -- Fast Scope
 if firstPersonCam then
@@ -64,12 +69,58 @@ if firstPersonCam then
         local result = oldSetup(...)
         firstPersonCam.scopeSpeed = 0.001
         firstPersonCam.zoomSpeed = 0.001
+        firstPersonCam.transitionTime = 0.1
         return result
     end
 end
 
+-- No Spread
+if cam then
+    local oldUpdate = cam.update
+    cam.update = function(...)
+        local args = {...}
+        if args[2] then
+            args[2].spread = 0
+            args[2].recoil = 0
+        end
+        return oldUpdate(table.unpack(args))
+    end
+end
+
+-- No Breath
+if breath then
+    local oldUpdate = breath.update
+    breath.update = function(...)
+        return
+    end
+end
+
+-- Bullet Correction
+InvokeEvent = hookfunction(Signals.invoke, function(...)
+    local Arguments = { ... };
+    
+    if not ToggleEnabled then
+        return InvokeEvent(table.unpack(Arguments));
+    end
+    
+    local Origin = Arguments[2]
+    local LookVector = Arguments[3]
+    
+    if Origin and LookVector then
+        local Direction = Camera.CFrame.LookVector
+        Arguments[3] = Direction
+    end
+    
+    return InvokeEvent(table.unpack(Arguments));
+end)
+
 print("=================================")
-print("Fast Scope Loaded!")
+print("ALL FEATURES LOADED!")
 print("Press T to toggle")
+print("- Fast Scope (0.1s)")
+print("- No Spread")
+print("- No Recoil")
+print("- No Breath")
+print("- Bullet Correction")
 print("=================================")
 ]=])
