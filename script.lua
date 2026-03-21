@@ -13,6 +13,7 @@ local Camera = Workspace.CurrentCamera;
 
 local RightClickHeld = false
 local Smoothness = 0.08
+local HitChance = 0.65
 
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -92,38 +93,58 @@ if cam then
     end
 end
 
--- Smooth Aim Assist (Legit Follow)
-RunService.RenderStepped:Connect(function()
-    if RightClickHeld then
-        local ClosestTarget = nil
-        local ClosestDistance = math.huge
-        
-        local Characters = Modules:Get("chars")
-        if Characters then
-            for PlayerName, Data in Characters do
-                local Player = PlayerService:FindFirstChild(PlayerName)
-                if Player and Player ~= LocalPlayer then
-                    local Character = Data.bodyModel
-                    if Character then
-                        local Root = Character:FindFirstChild("root")
-                        if Root then
-                            local ScreenPos = Camera:WorldToViewportPoint(Root.Position)
-                            local Center = Camera.ViewportSize / 2
-                            local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - Center).Magnitude
-                            
-                            if Distance < ClosestDistance then
-                                ClosestDistance = Distance
-                                ClosestTarget = Root.Position
-                            end
-                        end
+-- Get Closest Target Parts
+local function getTargetParts()
+    local targets = {}
+    
+    local Characters = Modules:Get("chars")
+    if Characters then
+        for PlayerName, Data in Characters do
+            local Player = PlayerService:FindFirstChild(PlayerName)
+            if Player and Player ~= LocalPlayer then
+                local Character = Data.bodyModel
+                if Character then
+                    local head = Character:FindFirstChild("head")
+                    local torso = Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart")
+                    
+                    if head and torso then
+                        local headScreen = Camera:WorldToViewportPoint(head.Position)
+                        local torsoScreen = Camera:WorldToViewportPoint(torso.Position)
+                        local center = Camera.ViewportSize / 2
+                        
+                        local headDist = (Vector2.new(headScreen.X, headScreen.Y) - center).Magnitude
+                        local torsoDist = (Vector2.new(torsoScreen.X, torsoScreen.Y) - center).Magnitude
+                        
+                        table.insert(targets, {part = head, distance = headDist})
+                        table.insert(targets, {part = torso, distance = torsoDist})
                     end
                 end
             end
         end
-        
-        if ClosestTarget then
-            local TargetCF = CFrame.new(Camera.CFrame.Position, ClosestTarget)
-            Camera.CFrame = Camera.CFrame:Lerp(TargetCF, Smoothness)
+    end
+    
+    return targets
+end
+
+-- Silent Aim (65% Hit Chance)
+RunService.RenderStepped:Connect(function()
+    if RightClickHeld then
+        if math.random() <= HitChance then
+            local targets = getTargetParts()
+            local closest = nil
+            local closestDist = math.huge
+            
+            for _, target in ipairs(targets) do
+                if target.distance < closestDist then
+                    closestDist = target.distance
+                    closest = target.part
+                end
+            end
+            
+            if closest then
+                local TargetCF = CFrame.new(Camera.CFrame.Position, closest.Position)
+                Camera.CFrame = Camera.CFrame:Lerp(TargetCF, Smoothness)
+            end
         end
     end
 end)
