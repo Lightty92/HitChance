@@ -6,9 +6,25 @@ end
 local PlayerService = GetService("Players");
 local UserInputService = GetService("UserInputService");
 local Workspace = GetService("Workspace");
+local RunService = GetService("RunService");
 
 local LocalPlayer = PlayerService.LocalPlayer;
 local Camera = Workspace.CurrentCamera;
+
+local RightClickHeld = false
+local Smoothness = 0.08
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightClickHeld = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightClickHeld = false
+    end
+end)
 
 local Modules = { }; do
     local Required = { };
@@ -75,6 +91,42 @@ if cam then
         return oldUpdate(table.unpack(args))
     end
 end
+
+-- Smooth Aim Assist (Legit Follow)
+RunService.RenderStepped:Connect(function()
+    if RightClickHeld then
+        local ClosestTarget = nil
+        local ClosestDistance = math.huge
+        
+        local Characters = Modules:Get("chars")
+        if Characters then
+            for PlayerName, Data in Characters do
+                local Player = PlayerService:FindFirstChild(PlayerName)
+                if Player and Player ~= LocalPlayer then
+                    local Character = Data.bodyModel
+                    if Character then
+                        local Root = Character:FindFirstChild("root")
+                        if Root then
+                            local ScreenPos = Camera:WorldToViewportPoint(Root.Position)
+                            local Center = Camera.ViewportSize / 2
+                            local Distance = (Vector2.new(ScreenPos.X, ScreenPos.Y) - Center).Magnitude
+                            
+                            if Distance < ClosestDistance then
+                                ClosestDistance = Distance
+                                ClosestTarget = Root.Position
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        if ClosestTarget then
+            local TargetCF = CFrame.new(Camera.CFrame.Position, ClosestTarget)
+            Camera.CFrame = Camera.CFrame:Lerp(TargetCF, Smoothness)
+        end
+    end
+end)
 
 InvokeEvent = hookfunction(Signals.invoke, function(...)
     local Arguments = { ... };
